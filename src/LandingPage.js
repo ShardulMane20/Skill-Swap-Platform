@@ -124,7 +124,7 @@ function LandingPage() {
         </div>
 
         <h1 className="landing-title">
-          SkillSync
+          SkillSwp
         </h1>
 
         <p className="landing-subtitle">
