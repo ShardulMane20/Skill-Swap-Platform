@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';
@@ -12,6 +13,12 @@ const ProfileCheckWrapper = ({ children }) => {
   // You can add Firestore profile check logic here later
   return children;
 };
+=======
+import { Routes, Route } from 'react-router-dom';
+import LandingPage from './LandingPage';
+import HomePage from './component/HomePage';
+import ProfileSetup from './component/ProfileSetup';
+>>>>>>> d78287fd4f52d1dfa7d98f8f093fdb8226cbf2a2
 
 // 🔐 Protected Route component
 const ProtectedRoute = ({ children, requireCompleteProfile = true }) => {
@@ -42,6 +49,7 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
+<<<<<<< HEAD
       <Route path="/login" element={<GoogleLoginModal />} />
       <Route path='/home' element={<HomePage />} />
       
@@ -54,6 +62,10 @@ function App() {
           </ProtectedRoute>
         }
       />
+=======
+      <Route path="/home" element={<HomePage />} />
+      <Route path="/profile-setup" element={<ProfileSetup />} /> {/* New route */}
+>>>>>>> d78287fd4f52d1dfa7d98f8f093fdb8226cbf2a2
     </Routes>
   );
 }
