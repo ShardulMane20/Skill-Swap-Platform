@@ -26,7 +26,7 @@ function LandingPage() {
 
         <button
           className="cta-button"
-          onClick={() => navigate('/signup')}
+          onClick={() => navigate('/home')}
         >
           🚀 Get Started
         </button>
