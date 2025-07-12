@@ -55,7 +55,7 @@ const ProfileSetup = () => {
     <div className="profile-setup">
       <header className="header">
         <div className="header-content">
-          <h1 className="logo">SkillBridge</h1>
+          <h1 className="logo">SkillSwap</h1>
           <div className="progress-steps">
             {[1, 2, 3].map((step) => (
               <div 
