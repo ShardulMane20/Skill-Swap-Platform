@@ -105,7 +105,7 @@ const HomePage = () => {
             ) : (
               <>
                 
-                <button className="nav-btn primary" onClick={() => navigate("/login")}>
+                <button className="nav-btn primary" onClick={() => navigate("/profile-setup")}>
                   Sign In
                 </button>
               </>
