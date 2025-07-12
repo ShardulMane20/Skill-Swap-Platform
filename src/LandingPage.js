@@ -17,7 +17,7 @@ function LandingPage() {
         </div>
 
         <h1 className="landing-title">
-          Skill<span className="highlight">Sync</span>
+          Skill<span className="highlight">Swap</span>
         </h1>
 
         <p className="landing-subtitle">
@@ -26,7 +26,7 @@ function LandingPage() {
 
         <button
           className="cta-button"
-          onClick={() => navigate('/signup')}
+          onClick={() => navigate('/home')}
         >
           🚀 Get Started
         </button>
