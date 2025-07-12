@@ -6,6 +6,10 @@ import { auth } from './firebase';
 import LandingPage from './LandingPage';
 import HomePage from './component/HomePage';
 import ProfileSetup from './component/ProfileSetup';
+import UserProfile from './component/UserProfile';
+import SkillSwapProposal from './component/SkillSwapProposal';
+import SkillSwapRequest from './component/SkillSwapRequest';
+
 
 const ProfileCheckWrapper = ({ children }) => {
   // Optional: You can add Firestore logic here
@@ -25,7 +29,7 @@ const ProtectedRoute = ({ children, requireCompleteProfile = true }) => {
   }
 
   if (!user) {
-    return <Navigate to="/home" />;
+    return <Navigate to="/profile" />;
   }
 
   if (requireCompleteProfile) {
@@ -40,7 +44,10 @@ function App() {
     <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/home" element={<HomePage />} />3
-      <Route path="/profile" element={<ProfileSetup />} />
+      <Route path="/profile-setup" element={<ProfileSetup />} />
+      <Route path="/profile/:id" element={<UserProfile />} />
+      <Route path='/proposal/:id' element={<SkillSwapProposal />} />
+      <Route path='/request/:id' element={<SkillSwapRequest />} />
 
       <Route
         path="/dashboard"

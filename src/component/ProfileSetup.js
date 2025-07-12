@@ -2,13 +2,22 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth } from "../firebase";
 import "./ProfileSetup.css";
-import { FiUpload, FiUser, FiMapPin, FiCode, FiTool, FiClock, FiEye, FiEyeOff } from "react-icons/fi";
+import { doc, setDoc } from "firebase/firestore";
+import { db } from "../firebase"; // adjust path if needed
+
+import {
+  FiUser,
+  FiMapPin,
+  FiCode,
+  FiTool,
+  FiClock,
+  FiEye,
+  FiEyeOff,
+} from "react-icons/fi";
 
 const ProfileSetup = () => {
   const [name, setName] = useState("");
   const [location, setLocation] = useState("");
-  const [profilePhoto, setProfilePhoto] = useState(null);
-  const [profilePreview, setProfilePreview] = useState(null);
   const [skillsOffered, setSkillsOffered] = useState("");
   const [skillsWanted, setSkillsWanted] = useState("");
   const [availability, setAvailability] = useState("");
@@ -16,40 +25,40 @@ const ProfileSetup = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const navigate = useNavigate();
 
-  const handlePhotoUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setProfilePhoto(file);
-      setProfilePreview(URL.createObjectURL(file));
+  const handleNext = () => setCurrentStep(currentStep + 1);
+  const handleBack = () => setCurrentStep(currentStep - 1);
+
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+
+  if (auth.currentUser) {
+    const userRef = doc(db, "users", auth.currentUser.uid);
+
+    const userData = {
+      name,
+      location,
+      skillsOffered: skillsOffered.split(",").map((skill) => skill.trim()).filter(Boolean),
+      skillsWanted: skillsWanted.split(",").map((skill) => skill.trim()).filter(Boolean),
+      availability,
+      isPublic,
+      uid: auth.currentUser.uid,
+      email: auth.currentUser.email,
+      createdAt: new Date()
+    };
+
+    try {
+      await setDoc(userRef, userData);
+      console.log("Profile saved successfully!");
+      navigate("/home");
+    } catch (error) {
+      console.error("Error saving profile:", error);
+      alert("Failed to save profile. Please try again.");
     }
-  };
+  } else {
+    navigate("/login");
+  }
+};
 
-  const handleNext = () => {
-    setCurrentStep(currentStep + 1);
-  };
-
-  const handleBack = () => {
-    setCurrentStep(currentStep - 1);
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (auth.currentUser) {
-      // Placeholder for Firebase upload logic
-      console.log({
-        name,
-        location,
-        profilePhoto,
-        skillsOffered: skillsOffered.split(",").map(skill => skill.trim()).filter(skill => skill),
-        skillsWanted: skillsWanted.split(",").map(skill => skill.trim()).filter(skill => skill),
-        availability,
-        isPublic,
-      });
-      navigate("/home"); // Redirect after submission
-    } else {
-      navigate("/login"); // Redirect to login if not authenticated
-    }
-  };
 
   return (
     <div className="profile-setup">
@@ -58,9 +67,11 @@ const ProfileSetup = () => {
           <h1 className="logo">SkillSwap</h1>
           <div className="progress-steps">
             {[1, 2, 3].map((step) => (
-              <div 
-                key={step} 
-                className={`step ${step === currentStep ? 'active' : ''} ${step < currentStep ? 'completed' : ''}`}
+              <div
+                key={step}
+                className={`step ${step === currentStep ? "active" : ""} ${
+                  step < currentStep ? "completed" : ""
+                }`}
               >
                 {step}
               </div>
@@ -68,37 +79,22 @@ const ProfileSetup = () => {
           </div>
         </div>
       </header>
-      
+
       <div className="setup-container">
         <div className="setup-header">
-          <h2>{currentStep === 1 ? 'Basic Information' : currentStep === 2 ? 'Skills & Availability' : 'Visibility'}</h2>
+          <h2>
+            {currentStep === 1
+              ? "Basic Information"
+              : currentStep === 2
+              ? "Skills & Availability"
+              : "Visibility"}
+          </h2>
           <p>Complete your profile to start connecting with others</p>
         </div>
-        
+
         <form onSubmit={handleSubmit} className="profile-form">
           {currentStep === 1 && (
             <div className="form-step">
-              <div className="photo-upload">
-                <div className="photo-preview">
-                  {profilePreview ? (
-                    <img src={profilePreview} alt="Profile preview" />
-                  ) : (
-                    <div className="photo-placeholder">
-                      <FiUser size={40} />
-                    </div>
-                  )}
-                </div>
-                <label className="upload-btn">
-                  <FiUpload /> Upload Photo
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handlePhotoUpload}
-                    hidden
-                  />
-                </label>
-              </div>
-              
               <div className="form-group">
                 <label>Full Name *</label>
                 <div className="input-with-icon">
@@ -112,7 +108,7 @@ const ProfileSetup = () => {
                   />
                 </div>
               </div>
-              
+
               <div className="form-group">
                 <label>Location</label>
                 <div className="input-with-icon">
@@ -125,15 +121,20 @@ const ProfileSetup = () => {
                   />
                 </div>
               </div>
-              
+
               <div className="form-actions">
-                <button type="button" className="next-btn" onClick={handleNext} disabled={!name}>
+                <button
+                  type="button"
+                  className="next-btn"
+                  onClick={handleNext}
+                  disabled={!name}
+                >
                   Next
                 </button>
               </div>
             </div>
           )}
-          
+
           {currentStep === 2 && (
             <div className="form-step">
               <div className="form-group">
@@ -150,7 +151,7 @@ const ProfileSetup = () => {
                 </div>
                 <div className="hint">Add at least 3 relevant skills</div>
               </div>
-              
+
               <div className="form-group">
                 <label>Skills You're Looking For *</label>
                 <div className="input-with-icon">
@@ -164,7 +165,7 @@ const ProfileSetup = () => {
                   />
                 </div>
               </div>
-              
+
               <div className="form-group">
                 <label>Your Availability *</label>
                 <div className="input-with-icon">
@@ -182,15 +183,15 @@ const ProfileSetup = () => {
                   </select>
                 </div>
               </div>
-              
+
               <div className="form-actions">
                 <button type="button" className="back-btn" onClick={handleBack}>
                   Back
                 </button>
-                <button 
-                  type="button" 
-                  className="next-btn" 
-                  onClick={handleNext} 
+                <button
+                  type="button"
+                  className="next-btn"
+                  onClick={handleNext}
                   disabled={!skillsOffered || !skillsWanted || !availability}
                 >
                   Next
@@ -198,22 +199,22 @@ const ProfileSetup = () => {
               </div>
             </div>
           )}
-          
+
           {currentStep === 3 && (
             <div className="form-step">
               <div className="form-group">
                 <label>Profile Visibility *</label>
                 <div className="visibility-options">
-                  <div 
-                    className={`visibility-option ${isPublic ? 'selected' : ''}`}
+                  <div
+                    className={`visibility-option ${isPublic ? "selected" : ""}`}
                     onClick={() => setIsPublic(true)}
                   >
                     <FiEye className="option-icon" />
                     <h3>Public</h3>
                     <p>Your profile will be visible to everyone</p>
                   </div>
-                  <div 
-                    className={`visibility-option ${!isPublic ? 'selected' : ''}`}
+                  <div
+                    className={`visibility-option ${!isPublic ? "selected" : ""}`}
                     onClick={() => setIsPublic(false)}
                   >
                     <FiEyeOff className="option-icon" />
@@ -222,13 +223,13 @@ const ProfileSetup = () => {
                   </div>
                 </div>
               </div>
-              
+
               <div className="form-actions">
                 <button type="button" className="back-btn" onClick={handleBack}>
                   Back
                 </button>
                 <button type="submit" className="submit-btn">
-                  Complete Profile 
+                  Complete Profile
                 </button>
               </div>
             </div>

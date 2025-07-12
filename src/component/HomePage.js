@@ -1,17 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth, db } from "../firebase";
-import GoogleLoginModal from "./GoogleLoginModel";
-import { onAuthStateChanged } from "firebase/auth";
-import {
-  collection,
-  query,
-  where,
-  getDocs,
-  limit,
-  startAfter
-} from "firebase/firestore";
-
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { collection, query, where, getDocs, limit, startAfter } from "firebase/firestore";
 import "./HomePage.css";
 
 const HomePage = () => {
@@ -21,10 +12,10 @@ const HomePage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [lastDoc, setLastDoc] = useState(null);
   const [totalPages, setTotalPages] = useState(1);
+  const profilesPerPage = 3;
   const [availability, setAvailability] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const profilesPerPage = 3;
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -48,7 +39,6 @@ const HomePage = () => {
         if (lastDoc && currentPage > 1) {
           profilesQuery = query(profilesQuery, startAfter(lastDoc));
         }
-
         const querySnapshot = await getDocs(profilesQuery);
         const profilesData = querySnapshot.docs.map((doc) => ({
           id: doc.id,
@@ -56,7 +46,6 @@ const HomePage = () => {
         }));
         setProfiles(profilesData);
         setLastDoc(querySnapshot.docs[querySnapshot.docs.length - 1]);
-
         const totalProfilesSnapshot = await getDocs(
           query(collection(db, "users"), where("isPublic", "==", true))
         );
@@ -80,19 +69,39 @@ const HomePage = () => {
     }
   };
 
+  const handleLoginPopupClose = () => {
+    setShowLoginPopup(false);
+  };
+
+  const handleLoginRedirect = () => {
+    navigate("/login");
+    setShowLoginPopup(false);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      console.log("User logged out successfully");
+      navigate("/"); // Redirect to homepage or login page after logout
+    } catch (error) {
+      console.error("Error logging out:", error);
+    }
+  };
+
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
   };
 
   return (
-    <div className={`home-container ${showLoginPopup ? 'blurred' : ''}`}>
-      {/* Navbar */}
+    <div className="home-container">
+      {/* Enhanced Navbar */}
       <nav className="main-nav">
         <div className="nav-container">
           <div className="nav-brand" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
             <i className="fas fa-exchange-alt"></i>
             <span>SkillSwap</span>
           </div>
+          
           <div className="nav-actions">
             {user ? (
               <div className="user-menu">
@@ -100,11 +109,17 @@ const HomePage = () => {
                   <i className="fas fa-user-circle"></i>
                   <span>My Profile</span>
                 </button>
+                <button className="nav-btn logout-btn" onClick={handleLogout}>
+                  <i className="fas fa-sign-out-alt"></i>
+                  <span>Logout</span>
+                </button>
               </div>
             ) : (
-              <button className="nav-btn primary" onClick={() => setShowLoginPopup(true)}>
-                Sign In
-              </button>
+              <>
+                <button className="nav-btn primary" onClick={() => navigate("/profile-setup")}>
+                  Sign In
+                </button>
+              </>
             )}
             <button className="mobile-menu-btn" onClick={toggleMenu}>
               <i className={`fas ${isMenuOpen ? 'fa-times' : 'fa-bars'}`}></i>
@@ -113,7 +128,7 @@ const HomePage = () => {
         </div>
       </nav>
 
-      {/* Hero */}
+      {/* Hero Section */}
       <section className="hero-section">
         <div className="hero-content">
           <h1>Connect, Collaborate, Grow</h1>
@@ -121,7 +136,7 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Search */}
+      {/* Main Content */}
       <main className="main-content">
         <div className="search-container">
           <div className="search-box">
@@ -144,7 +159,6 @@ const HomePage = () => {
           </select>
         </div>
 
-        {/* Profiles */}
         <div className="profiles-grid">
           {profiles.length > 0 ? (
             profiles.map((profile) => (
@@ -198,12 +212,11 @@ const HomePage = () => {
           ) : (
             <div className="no-profiles">
               <i className="fas fa-users"></i>
-              <p>No public profiles available</p>
+              <p>No public profiles available matching your criteria</p>
             </div>
           )}
         </div>
 
-        {/* Pagination */}
         <div className="pagination">
           <button
             disabled={currentPage === 1}
@@ -231,9 +244,21 @@ const HomePage = () => {
         </div>
       </main>
 
-      {/* Google Login Modal */}
       {showLoginPopup && (
-        <GoogleLoginModal onClose={() => setShowLoginPopup(false)} />
+        <div className="login-popup">
+          <div className="popup-content">
+            <h2>Join the Community</h2>
+            <p>Sign in to connect with other members and start skill swapping!</p>
+            <div className="popup-buttons">
+              <button className="popup-login-btn" onClick={handleLoginRedirect}>
+                <i className="fas fa-sign-in-alt"></i> Sign In
+              </button>
+              <button className="popup-close-btn" onClick={handleLoginPopupClose}>
+                <i className="fas fa-times"></i> Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

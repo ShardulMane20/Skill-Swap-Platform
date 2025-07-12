@@ -596,12 +596,7 @@ body {
   .profiles-grid {
     grid-template-columns: 1fr;
   }
-  .blurred {
-  filter: blur(3px);
-  pointer-events: none;
-  user-select: none;
-}
-
+  
   .search-container {
     flex-direction: column;
   }
