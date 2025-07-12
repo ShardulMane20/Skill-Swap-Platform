@@ -4,16 +4,14 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from './firebase';
 
 import LandingPage from './LandingPage';
-import GoogleLoginModal from './component/GoogleLoginModel';
 import HomePage from './component/HomePage';
+import ProfileSetup from './component/ProfileSetup';
 
-// 🔒 Wrapper to check if the user's profile is complete (You can expand this logic)
 const ProfileCheckWrapper = ({ children }) => {
-  // You can add Firestore profile check logic here later
+  // Optional: You can add Firestore logic here
   return children;
 };
 
-// 🔐 Protected Route component
 const ProtectedRoute = ({ children, requireCompleteProfile = true }) => {
   const [user, loading] = useAuthState(auth);
 
@@ -37,15 +35,13 @@ const ProtectedRoute = ({ children, requireCompleteProfile = true }) => {
   return children;
 };
 
-// 🧭 Main Routing
 function App() {
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
-      <Route path="/login" element={<GoogleLoginModal />} />
-      <Route path='/home' element={<HomePage />} />
-      
-      {/* 🔐 Example of protected route */}
+      <Route path="/home" element={<HomePage />} />3
+      <Route path="/profile" element={<ProfileSetup />} />
+
       <Route
         path="/dashboard"
         element={
@@ -58,7 +54,6 @@ function App() {
   );
 }
 
-// 🎨 Inline styles for loading spinner
 const styles = {
   loadingContainer: {
     display: 'flex',
