@@ -1,8 +1,8 @@
+// App.js
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from './firebase';
-
 import LandingPage from './LandingPage';
 import HomePage from './component/HomePage';
 import ProfileSetup from './component/ProfileSetup';
@@ -10,13 +10,7 @@ import UserProfile from './component/UserProfile';
 import SkillSwapProposal from './component/SkillSwapProposal';
 import SkillSwapRequest from './component/SkillSwapRequest';
 
-
-const ProfileCheckWrapper = ({ children }) => {
-  // Optional: You can add Firestore logic here
-  return children;
-};
-
-const ProtectedRoute = ({ children, requireCompleteProfile = true }) => {
+const ProtectedRoute = ({ children }) => {
   const [user, loading] = useAuthState(auth);
 
   if (loading) {
@@ -29,11 +23,7 @@ const ProtectedRoute = ({ children, requireCompleteProfile = true }) => {
   }
 
   if (!user) {
-    return <Navigate to="/profile" />;
-  }
-
-  if (requireCompleteProfile) {
-    return <ProfileCheckWrapper>{children}</ProfileCheckWrapper>;
+    return <Navigate to="/" />;
   }
 
   return children;
@@ -43,12 +33,33 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
-      <Route path="/home" element={<HomePage />} />3
+      <Route path="/home" element={<HomePage />} />
       <Route path="/profile-setup" element={<ProfileSetup />} />
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <UserProfile />
+          </ProtectedRoute>
+        }
+      />
       <Route path="/profile/:id" element={<UserProfile />} />
-      <Route path='/proposal/:id' element={<SkillSwapProposal />} />
-      <Route path='/request/:id' element={<SkillSwapRequest />} />
-
+      <Route
+        path="/proposal/:id"
+        element={
+          <ProtectedRoute>
+            <SkillSwapProposal />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/request"
+        element={
+          <ProtectedRoute>
+            <SkillSwapRequest />
+          </ProtectedRoute>
+        }
+      />
       <Route
         path="/dashboard"
         element={

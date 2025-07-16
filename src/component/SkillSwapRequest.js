@@ -1,42 +1,87 @@
-import React, { useState } from 'react';
+// SkillSwapRequest.js
+import React, { useState, useEffect } from 'react';
 import { FiHome, FiSearch, FiUser, FiAlertTriangle, FiCheck, FiX } from 'react-icons/fi';
+import { auth, db } from '../firebase';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import {
+  collection,
+  query,
+  where,
+  onSnapshot,
+  doc,
+  updateDoc,
+  orderBy,
+  limit
+} from 'firebase/firestore';
 import './SkillSwapRequest.css';
 
+const swapRequestCollection = collection(db, 'swapRequests');
+
 const SkillSwapRequest = () => {
+  const [user] = useAuthState(auth);
   const [activeTab, setActiveTab] = useState('pending');
+  const [requests, setRequests] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const perPage = 5;
 
-  const swapRequests = [
-    {
-      id: 1,
-      name: "More Demo",
-      photo: "https://randomuser.me/api/portraits/women/44.jpg",
-      rating: 3.9,
-      skillsOffered: ["Slow Script"],
-      skillsWanted: ["Printed"],
-      status: "pending",
-      date: "2 hours ago"
-    },
-    {
-      id: 2,
-      name: "Alex Johnson",
-      photo: "https://randomuser.me/api/portraits/men/32.jpg",
-      rating: 4.2,
-      skillsOffered: ["Graphic Design", "Photo Editing"],
-      skillsWanted: ["Web Development"],
-      status: "rejected",
-      date: "1 day ago"
-    },
-    // Add more requests as needed
-  ];
+  useEffect(() => {
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
+    setIsLoading(true);
+    const q = query(
+      swapRequestCollection,
+      where('participants', 'array-contains', user.uid),
+      orderBy('timestamp', 'desc'),
+      limit(perPage * currentPage)
+    );
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        setRequests(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        setIsLoading(false);
+      },
+      (err) => {
+        setError('Failed to load requests. Please try again.');
+        setIsLoading(false);
+      }
+    );
+    return () => unsub();
+  }, [user, currentPage]);
 
-  const filteredRequests = swapRequests.filter(request => 
-    activeTab === 'all' || request.status === activeTab
+  const handleStatusChange = async (id, newStatus) => {
+    try {
+      await updateDoc(doc(db, 'swapRequests', id), { status: newStatus });
+    } catch (err) {
+      console.error('Status update failed:', err);
+    }
+  };
+
+  const filtered = requests.filter(r =>
+    activeTab === 'all' ? true : r.status === activeTab
+  );
+
+  const pages = Array.from(
+    { length: Math.ceil(filtered.length / perPage) },
+    (_, i) => i + 1
+  );
+
+  const paginated = filtered.slice((currentPage - 1) * perPage, currentPage * perPage);
+
+  if (!user) return <div>Please log in to view your requests.</div>;
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return (
+    <div className="error-message">
+      {error}
+      <button onClick={() => window.location.reload()}>Retry</button>
+    </div>
   );
 
   return (
     <div className="skill-swap-container">
-      {/* Header */}
       <header className="swap-header">
         <h1>Skill Swap Platform</h1>
         <div className="header-icons">
@@ -46,113 +91,96 @@ const SkillSwapRequest = () => {
         </div>
       </header>
 
-      {/* Warning Banner */}
       <div className="warning-banner">
         <FiAlertTriangle className="warning-icon" />
-        <span>You have {swapRequests.filter(r => r.status === 'pending').length} pending requests</span>
+        <span>You have {requests.filter(r => r.status === 'pending').length} pending requests</span>
       </div>
 
-      {/* Status Tabs */}
       <div className="status-tabs">
-        <button 
-          className={`tab-btn ${activeTab === 'pending' ? 'active' : ''}`}
-          onClick={() => setActiveTab('pending')}
-        >
-          Pending
-        </button>
-        <button 
-          className={`tab-btn ${activeTab === 'rejected' ? 'active' : ''}`}
-          onClick={() => setActiveTab('rejected')}
-        >
-          Rejected
-        </button>
-        <button 
-          className={`tab-btn ${activeTab === 'all' ? 'active' : ''}`}
-          onClick={() => setActiveTab('all')}
-        >
-          All Requests
-        </button>
+        {['pending', 'rejected', 'all'].map(tab => (
+          <button
+            key={tab}
+            className={`tab-btn ${activeTab === tab ? 'active' : ''}`}
+            onClick={() => {
+              setActiveTab(tab);
+              setCurrentPage(1);
+            }}
+          >
+            {tab.charAt(0).toUpperCase() + tab.slice(1)}{tab === 'all' ? ' Requests' : ''}
+          </button>
+        ))}
       </div>
 
-      {/* Swap Requests List */}
       <div className="requests-list">
-        {filteredRequests.map(request => (
-          <div key={request.id} className={`request-card ${request.status}`}>
+        {paginated.map(r => (
+          <div key={r.id} className={`request-card ${r.status}`}>
             <div className="user-info">
-              <img src={request.photo} alt={request.name} className="profile-photo" />
+              <img
+                src={r.to.id === user.uid ? r.from.photoURL : r.to.photoURL}
+                alt=""
+                className="profile-photo"
+              />
               <div className="user-details">
-                <h3>{request.name}</h3>
-                <div className="rating">
-                  <span className="stars">★★★★☆</span>
-                  <span className="rating-value">{request.rating}/5</span>
-                </div>
-                <span className="request-date">{request.date}</span>
+                <h3>{r.to.id === user.uid ? r.from.name : r.to.name}</h3>
+                <span className="request-date">
+                  {new Date(r.timestamp).toLocaleString()}
+                </span>
               </div>
             </div>
 
             <div className="skills-section">
               <div className="skills-row">
-                <span className="skills-label">Skills offered:</span>
-                <div className="skills-tags">
-                  {request.skillsOffered.map((skill, index) => (
-                    <span key={index} className="skill-tag">{skill}</span>
-                  ))}
-                </div>
+                <span className="skills-label">Offered:</span>
+                {r.offeredSkill}
               </div>
               <div className="skills-row">
-                <span className="skills-label">Skills wanted:</span>
-                <div className="skills-tags">
-                  {request.skillsWanted.map((skill, index) => (
-                    <span key={index} className="skill-tag wanted">{skill}</span>
-                  ))}
-                </div>
+                <span className="skills-label">Wanted:</span>
+                {r.wantedSkill}
               </div>
             </div>
 
-            {request.status === 'pending' && (
+            {r.status === 'pending' && r.to.id === user.uid && (
               <div className="action-buttons">
-                <button className="accept-btn">
+                <button className="accept-btn" onClick={() => handleStatusChange(r.id, 'accepted')}>
                   <FiCheck /> Accept
                 </button>
-                <button className="reject-btn">
+                <button className="reject-btn" onClick={() => handleStatusChange(r.id, 'rejected')}>
                   <FiX /> Reject
                 </button>
               </div>
             )}
 
-            {request.status === 'rejected' && (
-              <div className="status-badge rejected">
-                <FiX /> Rejected
+            {r.status !== 'pending' && (
+              <div className={`status-badge ${r.status}`}>
+                {r.status === 'accepted' ? <FiCheck /> : <FiX />}
+                {r.status.charAt(0).toUpperCase() + r.status.slice(1)}
               </div>
             )}
           </div>
         ))}
       </div>
 
-      {/* Pagination */}
       <div className="pagination">
-        <button 
-          className={`page-btn ${currentPage === 1 ? 'disabled' : ''}`}
-          disabled={currentPage === 1}
-          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+        <button
+          className="page-btn"
+          disabled={currentPage <= 1}
+          onClick={() => setCurrentPage(prev => prev - 1)}
         >
-          &lt;
         </button>
-        {[1, 2, 3].map(page => (
-          <button 
-            key={page}
-            className={`page-btn ${currentPage === page ? 'active' : ''}`}
-            onClick={() => setCurrentPage(page)}
+        {pages.map(p => (
+          <button
+            key={p}
+            className={`page-btn ${currentPage === p ? 'active' : ''}`}
+            onClick={() => setCurrentPage(p)}
           >
-            {page}
+            {p}
           </button>
         ))}
-        <button 
-          className={`page-btn ${currentPage === 3 ? 'disabled' : ''}`}
-          disabled={currentPage === 3}
-          onClick={() => setCurrentPage(prev => Math.min(3, prev + 1))}
+        <button
+          className="page-btn"
+          disabled={currentPage >= pages.length}
+          onClick={() => setCurrentPage(prev => prev + 1)}
         >
-          &gt;
         </button>
       </div>
     </div>

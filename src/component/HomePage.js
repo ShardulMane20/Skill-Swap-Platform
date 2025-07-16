@@ -1,8 +1,17 @@
+// HomePage.js
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth, db } from "../firebase";
-import { onAuthStateChanged, signOut } from "firebase/auth";
-import { collection, query, where, getDocs, limit, startAfter } from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  limit,
+  startAfter,
+  getCountFromServer,
+} from "firebase/firestore";
 import "./HomePage.css";
 
 const HomePage = () => {
@@ -10,8 +19,9 @@ const HomePage = () => {
   const [showLoginPopup, setShowLoginPopup] = useState(false);
   const [profiles, setProfiles] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [lastDoc, setLastDoc] = useState(null);
+  const [pageDocs, setPageDocs] = useState([]);
   const [totalPages, setTotalPages] = useState(1);
+  const [isNavigating, setIsNavigating] = useState(false);
   const profilesPerPage = 3;
   const [availability, setAvailability] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -30,32 +40,51 @@ const HomePage = () => {
       try {
         let profilesQuery = query(
           collection(db, "users"),
-          where("isPublic", "==", true),
-          limit(profilesPerPage)
+          where("isPublic", "==", true)
         );
         if (availability) {
           profilesQuery = query(profilesQuery, where("availability", "==", availability));
         }
-        if (lastDoc && currentPage > 1) {
-          profilesQuery = query(profilesQuery, startAfter(lastDoc));
+        if (currentPage > 1 && pageDocs[currentPage - 2]) {
+          profilesQuery = query(profilesQuery, startAfter(pageDocs[currentPage - 2]));
         }
+        profilesQuery = query(profilesQuery, limit(profilesPerPage));
+
         const querySnapshot = await getDocs(profilesQuery);
         const profilesData = querySnapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         }));
-        setProfiles(profilesData);
-        setLastDoc(querySnapshot.docs[querySnapshot.docs.length - 1]);
-        const totalProfilesSnapshot = await getDocs(
+
+        const filteredProfiles = profilesData.filter((profile) => {
+          const q = searchQuery.toLowerCase();
+          return (
+            (profile.name?.toLowerCase() || "").includes(q) ||
+            (profile.skillsOffered || []).some((skill) => skill.toLowerCase().includes(q)) ||
+            (profile.skillsWanted || []).some((skill) => skill.toLowerCase().includes(q))
+          );
+        });
+
+        setProfiles(filteredProfiles);
+        const newPageDocs = [...pageDocs];
+        newPageDocs[currentPage - 1] = querySnapshot.docs[querySnapshot.docs.length - 1];
+        setPageDocs(newPageDocs);
+
+        const totalSnapshot = await getCountFromServer(
           query(collection(db, "users"), where("isPublic", "==", true))
         );
-        setTotalPages(Math.ceil(totalProfilesSnapshot.size / profilesPerPage));
+        setTotalPages(Math.ceil(totalSnapshot.data().count / profilesPerPage));
       } catch (error) {
         console.error("Error fetching profiles:", error);
       }
     };
-    fetchProfiles();
-  }, [currentPage, availability]);
+
+    const debounceFetch = setTimeout(() => {
+      fetchProfiles();
+    }, 300);
+
+    return () => clearTimeout(debounceFetch);
+  }, [currentPage, availability, searchQuery]);
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
@@ -65,8 +94,13 @@ const HomePage = () => {
     if (!user) {
       setShowLoginPopup(true);
     } else {
-      console.log(`Request sent to profile: ${profileId}`);
+      navigate(`/proposal/${profileId}`);
     }
+  };
+
+  const handleRequestNavigation = () => {
+    setIsNavigating(true);
+    navigate('/request');
   };
 
   const handleLoginPopupClose = () => {
@@ -74,18 +108,8 @@ const HomePage = () => {
   };
 
   const handleLoginRedirect = () => {
-    navigate("/login");
     setShowLoginPopup(false);
-  };
-
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      console.log("User logged out successfully");
-      navigate("/"); // Redirect to homepage or login page after logout
-    } catch (error) {
-      console.error("Error logging out:", error);
-    }
+    navigate('/profile-setup');
   };
 
   const toggleMenu = () => {
@@ -94,32 +118,29 @@ const HomePage = () => {
 
   return (
     <div className="home-container">
-      {/* Enhanced Navbar */}
       <nav className="main-nav">
         <div className="nav-container">
           <div className="nav-brand" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
             <i className="fas fa-exchange-alt"></i>
             <span>SkillSwap</span>
           </div>
-          
           <div className="nav-actions">
             {user ? (
               <div className="user-menu">
-                <button className="user-btn" onClick={() => navigate("/profile")}>
+                <button
+                  className="user-btn"
+                  onClick={handleRequestNavigation}
+                  disabled={isNavigating}
+                  aria-label="View my skill swap requests"
+                >
                   <i className="fas fa-user-circle"></i>
-                  <span>My Profile</span>
-                </button>
-                <button className="nav-btn logout-btn" onClick={handleLogout}>
-                  <i className="fas fa-sign-out-alt"></i>
-                  <span>Logout</span>
+                  <span>{isNavigating ? 'Loading...' : 'My Requests'}</span>
                 </button>
               </div>
             ) : (
-              <>
-                <button className="nav-btn primary" onClick={() => navigate("/profile-setup")}>
-                  Sign In
-                </button>
-              </>
+              <button className="nav-btn primary" onClick={() => navigate('/profile-setup')}>
+                Sign In
+              </button>
             )}
             <button className="mobile-menu-btn" onClick={toggleMenu}>
               <i className={`fas ${isMenuOpen ? 'fa-times' : 'fa-bars'}`}></i>
@@ -128,7 +149,6 @@ const HomePage = () => {
         </div>
       </nav>
 
-      {/* Hero Section */}
       <section className="hero-section">
         <div className="hero-content">
           <h1>Connect, Collaborate, Grow</h1>
@@ -136,7 +156,6 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Main Content */}
       <main className="main-content">
         <div className="search-container">
           <div className="search-box">
@@ -203,6 +222,7 @@ const HomePage = () => {
                   <button
                     className="request-btn"
                     onClick={() => handleRequest(profile.id)}
+                    aria-label={`Connect with ${profile.name}`}
                   >
                     <i className="fas fa-handshake"></i> Connect
                   </button>

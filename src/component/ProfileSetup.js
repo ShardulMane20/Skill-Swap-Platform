@@ -2,18 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth } from "../firebase";
 import "./ProfileSetup.css";
-import { doc, setDoc } from "firebase/firestore";
-import { db } from "../firebase"; // adjust path if needed
-
-import {
-  FiUser,
-  FiMapPin,
-  FiCode,
-  FiTool,
-  FiClock,
-  FiEye,
-  FiEyeOff,
-} from "react-icons/fi";
+import { FiUser, FiMapPin, FiCode, FiTool, FiClock, FiEye, FiEyeOff } from "react-icons/fi";
 
 const ProfileSetup = () => {
   const [name, setName] = useState("");
@@ -23,42 +12,30 @@ const ProfileSetup = () => {
   const [availability, setAvailability] = useState("");
   const [isPublic, setIsPublic] = useState(true);
   const [currentStep, setCurrentStep] = useState(1);
+  const [profilePhoto, setProfilePhoto] = useState(null);
+  const [profilePreview, setProfilePreview] = useState(null);
   const navigate = useNavigate();
 
   const handleNext = () => setCurrentStep(currentStep + 1);
   const handleBack = () => setCurrentStep(currentStep - 1);
 
- const handleSubmit = async (e) => {
-  e.preventDefault();
-
-  if (auth.currentUser) {
-    const userRef = doc(db, "users", auth.currentUser.uid);
-
-    const userData = {
-      name,
-      location,
-      skillsOffered: skillsOffered.split(",").map((skill) => skill.trim()).filter(Boolean),
-      skillsWanted: skillsWanted.split(",").map((skill) => skill.trim()).filter(Boolean),
-      availability,
-      isPublic,
-      uid: auth.currentUser.uid,
-      email: auth.currentUser.email,
-      createdAt: new Date()
-    };
-
-    try {
-      await setDoc(userRef, userData);
-      console.log("Profile saved successfully!");
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (auth.currentUser) {
+      console.log({
+        name,
+        location,
+        profilePhoto,
+        skillsOffered: skillsOffered.split(",").map(skill => skill.trim()).filter(skill => skill),
+        skillsWanted: skillsWanted.split(",").map(skill => skill.trim()).filter(skill => skill),
+        availability,
+        isPublic,
+      });
       navigate("/home");
-    } catch (error) {
-      console.error("Error saving profile:", error);
-      alert("Failed to save profile. Please try again.");
+    } else {
+      navigate("/login");
     }
-  } else {
-    navigate("/login");
-  }
-};
-
+  };
 
   return (
     <div className="profile-setup">
@@ -69,9 +46,7 @@ const ProfileSetup = () => {
             {[1, 2, 3].map((step) => (
               <div
                 key={step}
-                className={`step ${step === currentStep ? "active" : ""} ${
-                  step < currentStep ? "completed" : ""
-                }`}
+                className={`step ${step === currentStep ? "active" : ""} ${step < currentStep ? "completed" : ""}`}
               >
                 {step}
               </div>
@@ -95,6 +70,29 @@ const ProfileSetup = () => {
         <form onSubmit={handleSubmit} className="profile-form">
           {currentStep === 1 && (
             <div className="form-step">
+              <div className="photo-upload">
+                <div className="photo-preview">
+                  {profilePreview ? (
+                    <img src={profilePreview} alt="Profile preview" />
+                  ) : (
+                    <div className="photo-placeholder">
+                      <FiUser size={40} />
+                    </div>
+                  )}
+                </div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      setProfilePhoto(file);
+                      setProfilePreview(URL.createObjectURL(file));
+                    }
+                  }}
+                />
+              </div>
+
               <div className="form-group">
                 <label>Full Name *</label>
                 <div className="input-with-icon">
@@ -123,12 +121,7 @@ const ProfileSetup = () => {
               </div>
 
               <div className="form-actions">
-                <button
-                  type="button"
-                  className="next-btn"
-                  onClick={handleNext}
-                  disabled={!name}
-                >
+                <button type="button" className="next-btn" onClick={handleNext} disabled={!name}>
                   Next
                 </button>
               </div>

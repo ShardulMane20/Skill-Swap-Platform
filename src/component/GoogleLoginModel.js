@@ -17,26 +17,37 @@ const GoogleLoginModal = ({ onClose }) => {
     if (userSnap.exists()) {
       const data = userSnap.data();
 
-      const isComplete =
-        data.teachSkill?.trim() &&
-        data.learnSkill?.trim() &&
-        data.college?.trim() &&
-        data.year?.trim() &&
-        data.bio?.trim();
+     const isComplete =
+  data.name?.trim() &&
+  Array.isArray(data.skillsOffered) && data.skillsOffered.length > 0 &&
+  Array.isArray(data.skillsWanted) && data.skillsWanted.length > 0 &&
+  data.availability?.trim();
 
       toast.success('Login successful!');
 
-      if (isComplete) {
-        navigate('/home');
-      } else {
-        navigate('/profile-setup');
-      }
+      navigate(isComplete ? '/home' : '/profile-setup');
     } else {
-      // Create empty user data if doesn't exist
+      const {
+        displayName,
+        email,
+        photoURL,
+        phoneNumber,
+        emailVerified,
+        providerData,
+        metadata,
+      } = user;
+
+      const providerId = providerData?.[0]?.providerId || 'google';
+
       await setDoc(userRef, {
-        name: user.displayName,
-        email: user.email,
-        photoURL: user.photoURL,
+        name: displayName || '',
+        email: email || '',
+        photoURL: photoURL || '',
+        phoneNumber: phoneNumber || '',
+        emailVerified: emailVerified || false,
+        provider: providerId,
+        createdAt: metadata?.creationTime || new Date().toISOString(),
+        lastLogin: metadata?.lastSignInTime || '',
       });
 
       toast.info('Please complete your profile');

@@ -1,79 +1,108 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { FiArrowLeft, FiSend, FiChevronDown } from 'react-icons/fi';
+import { auth, db } from '../firebase';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
 import './SkillSwapProposal.css';
 
 const SkillSwapProposal = () => {
+  const [user] = useAuthState(auth);
+  const { id: targetUserId } = useParams(); // ID of the requested user
+  const navigate = useNavigate();
+
+  const [currentUser, setCurrentUser] = useState(null);
+  const [targetUser, setTargetUser] = useState(null);
+
   const [selectedOfferedSkill, setSelectedOfferedSkill] = useState('');
   const [selectedWantedSkill, setSelectedWantedSkill] = useState('');
   const [message, setMessage] = useState('');
   const [showOfferedSkills, setShowOfferedSkills] = useState(false);
   const [showWantedSkills, setShowWantedSkills] = useState(false);
 
-  // Sample data - replace with your actual data
-  const userSkills = [
-    { id: 1, name: "Graphic Design" },
-    { id: 2, name: "Web Development" },
-    { id: 3, name: "Photo Editing" },
-    { id: 4, name: "Content Writing" },
-  ];
+  useEffect(() => {
+    const fetchUsers = async () => {
+      if (!user || !targetUserId) return;
 
-  const partnerSkills = [
-    { id: 1, name: "Video Editing" },
-    { id: 2, name: "SEO Optimization" },
-    { id: 3, name: "Social Media Management" },
-  ];
+      const userRef = doc(db, 'users', user.uid);
+      const targetRef = doc(db, 'users', targetUserId);
 
-  const handleSubmit = (e) => {
+      const userSnap = await getDoc(userRef);
+      const targetSnap = await getDoc(targetRef);
+
+      if (userSnap.exists()) setCurrentUser(userSnap.data());
+      if (targetSnap.exists()) setTargetUser(targetSnap.data());
+    };
+
+    fetchUsers();
+  }, [user, targetUserId]);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Handle form submission logic here
-    console.log({
+
+    if (!selectedOfferedSkill || !selectedWantedSkill || !message) return;
+
+    const proposalData = {
+      from: {
+        id: user.uid,
+        name: currentUser?.name,
+        photoURL: currentUser?.photoURL || '',
+      },
+      to: {
+        id: targetUserId,
+        name: targetUser?.name,
+        photoURL: targetUser?.photoURL || '',
+      },
       offeredSkill: selectedOfferedSkill,
       wantedSkill: selectedWantedSkill,
-      message
-    });
+      message,
+      timestamp: Date.now(),
+    };
+
+    await addDoc(collection(db, 'proposals'), proposalData);
     alert('Swap proposal submitted successfully!');
+    navigate('/home');
   };
+
+  if (!currentUser || !targetUser) {
+    return <div className="loading">Loading user data...</div>;
+  }
 
   return (
     <div className="swap-proposal-container">
-      {/* Header */}
       <header className="proposal-header">
-        <button className="back-button">
+        <button className="back-button" onClick={() => navigate(-1)}>
           <FiArrowLeft size={20} />
         </button>
         <h1>Create Swap Proposal</h1>
       </header>
 
-      {/* Main Content */}
       <div className="proposal-content">
         <form onSubmit={handleSubmit}>
-          {/* Offered Skills Section */}
           <div className="form-section">
             <h2 className="section-title">
-              Choose one of your offered skills ({userSkills.length} available)
+              Choose one of your offered skills ({currentUser.skillsOffered?.length || 0} available)
             </h2>
             <div className="dropdown-container">
-              <div 
+              <div
                 className="dropdown-header"
                 onClick={() => setShowOfferedSkills(!showOfferedSkills)}
               >
-                <span>
-                  {selectedOfferedSkill || "Select a skill"}
-                </span>
+                <span>{selectedOfferedSkill || "Select a skill"}</span>
                 <FiChevronDown className={`dropdown-icon ${showOfferedSkills ? 'open' : ''}`} />
               </div>
               {showOfferedSkills && (
                 <div className="dropdown-list">
-                  {userSkills.map(skill => (
-                    <div 
-                      key={skill.id}
+                  {currentUser.skillsOffered?.map((skill, index) => (
+                    <div
+                      key={index}
                       className="dropdown-item"
                       onClick={() => {
-                        setSelectedOfferedSkill(skill.name);
+                        setSelectedOfferedSkill(skill);
                         setShowOfferedSkills(false);
                       }}
                     >
-                      {skill.name}
+                      {skill}
                     </div>
                   ))}
                 </div>
@@ -81,33 +110,30 @@ const SkillSwapProposal = () => {
             </div>
           </div>
 
-          {/* Wanted Skills Section */}
           <div className="form-section">
             <h2 className="section-title">
-              Choose one of their wanted skills ({partnerSkills.length} available)
+              Choose one of their wanted skills ({targetUser.skillsWanted?.length || 0} available)
             </h2>
             <div className="dropdown-container">
-              <div 
+              <div
                 className="dropdown-header"
                 onClick={() => setShowWantedSkills(!showWantedSkills)}
               >
-                <span>
-                  {selectedWantedSkill || "Select a skill"}
-                </span>
+                <span>{selectedWantedSkill || "Select a skill"}</span>
                 <FiChevronDown className={`dropdown-icon ${showWantedSkills ? 'open' : ''}`} />
               </div>
               {showWantedSkills && (
                 <div className="dropdown-list">
-                  {partnerSkills.map(skill => (
-                    <div 
-                      key={skill.id}
+                  {targetUser.skillsWanted?.map((skill, index) => (
+                    <div
+                      key={index}
                       className="dropdown-item"
                       onClick={() => {
-                        setSelectedWantedSkill(skill.name);
+                        setSelectedWantedSkill(skill);
                         setShowWantedSkills(false);
                       }}
                     >
-                      {skill.name}
+                      {skill}
                     </div>
                   ))}
                 </div>
@@ -115,7 +141,6 @@ const SkillSwapProposal = () => {
             </div>
           </div>
 
-          {/* Message Section */}
           <div className="form-section">
             <h2 className="section-title">Message</h2>
             <textarea
@@ -127,11 +152,10 @@ const SkillSwapProposal = () => {
             />
           </div>
 
-          {/* Submit Button */}
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             className="submit-button"
-            disabled={!selectedOfferedSkill || !selectedWantedSkill}
+            disabled={!selectedOfferedSkill || !selectedWantedSkill || !message}
           >
             <FiSend className="send-icon" />
             Submit Proposal

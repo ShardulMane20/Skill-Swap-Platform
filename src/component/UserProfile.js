@@ -3,7 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
+import { signOut } from 'firebase/auth';
 import './UserProfile.css';
+import GoogleLoginModal from './GoogleLoginModel';
 
 const UserProfile = () => {
   const { id } = useParams();
@@ -13,10 +15,15 @@ const UserProfile = () => {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [user] = useAuthState(auth);
 
+  const currentUserId = id || user?.uid;
+  const isCurrentUser = !id || id === user?.uid;
+
   useEffect(() => {
+    if (!currentUserId) return;
+
     const fetchUserData = async () => {
       try {
-        const userDoc = doc(db, 'users', id);
+        const userDoc = doc(db, 'users', currentUserId);
         const userSnapshot = await getDoc(userDoc);
         if (userSnapshot.exists()) {
           setUserData(userSnapshot.data());
@@ -31,82 +38,76 @@ const UserProfile = () => {
     };
 
     fetchUserData();
-  }, [id]);
+  }, [currentUserId]);
 
   const handleRequest = () => {
     if (user) {
-      navigate(`/request/${id}`);
+      navigate(`/request/${currentUserId}`);
     } else {
       setShowLoginModal(true);
     }
   };
 
-  if (loading) {
-    return <div className="loading">Loading...</div>;
-  }
+  const handleLogout = async () => {
+    await signOut(auth);
+    navigate('/');
+  };
 
-  if (!userData) {
-    return <div className="error">User not found</div>;
-  }
+  if (loading) return <div className="loading">Loading...</div>;
+
+  if (!userData) return <div className="error">User not found</div>;
 
   return (
     <div className="user-profile">
       <img src={userData.photoURL} alt={`${userData.name}'s profile`} className="profile-photo" />
       <h2>{userData.name}</h2>
+
       <div className="skills">
         <div className="skills-offered">
           <h3>Skills Offered</h3>
-          {userData.skillsOffered && userData.skillsOffered.length > 0 ? (
-            <ul>
-              {userData.skillsOffered.map((skill, index) => (
-                <li key={index}>{skill}</li>
-              ))}
-            </ul>
-          ) : (
-            <p>No skills offered</p>
-          )}
+          {userData.skillsOffered?.length ? (
+            <ul>{userData.skillsOffered.map((skill, i) => <li key={i}>{skill}</li>)}</ul>
+          ) : <p>No skills offered</p>}
         </div>
         <div className="skills-wanted">
           <h3>Skills Wanted</h3>
-          {userData.skillsWanted && userData.skillsWanted.length > 0 ? (
-            <ul>
-              {userData.skillsWanted.map((skill, index) => (
-                <li key={index}>{skill}</li>
-              ))}
-            </ul>
-          ) : (
-            <p>No skills wanted</p>
-          )}
+          {userData.skillsWanted?.length ? (
+            <ul>{userData.skillsWanted.map((skill, i) => <li key={i}>{skill}</li>)}</ul>
+          ) : <p>No skills wanted</p>}
         </div>
       </div>
+
       <div className="rating">
         <h3>Rating</h3>
         <p>{userData.rating ? `${userData.rating} / 5` : 'No rating yet'}</p>
       </div>
+
       <div className="feedback">
         <h3>Feedback</h3>
-        {userData.feedback && userData.feedback.length > 0 ? (
-          userData.feedback.map((fb, index) => (
-            <div key={index} className="feedback-item">
+        {userData.feedback?.length ? (
+          userData.feedback.map((fb, i) => (
+            <div key={i} className="feedback-item">
               <p>{fb.text}</p>
               <p>- {fb.reviewer}</p>
             </div>
           ))
-        ) : (
-          <p>No feedback yet</p>
-        )}
+        ) : <p>No feedback yet</p>}
       </div>
-      <button onClick={handleRequest}>Request</button>
+
+      {id && (
+        <button onClick={handleRequest} className="request-btn">
+          <i className="fas fa-paper-plane"></i> Request
+        </button>
+      )}
+
+      {isCurrentUser && (
+        <button onClick={handleLogout} className="logout-btn">
+          <i className="fas fa-sign-out-alt"></i> Logout
+        </button>
+      )}
+
       {showLoginModal && (
-        <div className="modal">
-          <div className="modal-content">
-            <h2>Login Required</h2>
-            <p>Please login or signup to send a request.</p>
-            <button onClick={() => navigate(`/login?redirect=/request/${id}`)}>Login</button>
-            <button onClick={() => navigate(`/signup?redirect=/request/${id}`)}>Signup</button>
-            <button onClick={() => setShowLoginModal(false)}>Close</button>
-          </div>
-        </div>
+        <GoogleLoginModal onClose={() => setShowLoginModal(false)} />
       )}
     </div>
   );
