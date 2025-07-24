@@ -106,7 +106,6 @@ const ProfileSetup = () => {
                   />
                 </div>
               </div>
-
               <div className="form-group">
                 <label>Location</label>
                 <div className="input-with-icon">
@@ -119,7 +118,6 @@ const ProfileSetup = () => {
                   />
                 </div>
               </div>
-
               <div className="form-actions">
                 <button type="button" className="next-btn" onClick={handleNext} disabled={!name}>
                   Next
@@ -127,7 +125,6 @@ const ProfileSetup = () => {
               </div>
             </div>
           )}
-
           {currentStep === 2 && (
             <div className="form-step">
               <div className="form-group">
@@ -144,7 +141,6 @@ const ProfileSetup = () => {
                 </div>
                 <div className="hint">Add at least 3 relevant skills</div>
               </div>
-
               <div className="form-group">
                 <label>Skills You're Looking For *</label>
                 <div className="input-with-icon">
@@ -158,7 +154,6 @@ const ProfileSetup = () => {
                   />
                 </div>
               </div>
-
               <div className="form-group">
                 <label>Your Availability *</label>
                 <div className="input-with-icon">
@@ -176,7 +171,6 @@ const ProfileSetup = () => {
                   </select>
                 </div>
               </div>
-
               <div className="form-actions">
                 <button type="button" className="back-btn" onClick={handleBack}>
                   Back
@@ -192,7 +186,6 @@ const ProfileSetup = () => {
               </div>
             </div>
           )}
-
           {currentStep === 3 && (
             <div className="form-step">
               <div className="form-group">
@@ -216,7 +209,6 @@ const ProfileSetup = () => {
                   </div>
                 </div>
               </div>
-
               <div className="form-actions">
                 <button type="button" className="back-btn" onClick={handleBack}>
                   Back

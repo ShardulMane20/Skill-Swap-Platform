@@ -146,6 +146,9 @@ const HomePage = () => {
             <i className="fas fa-exchange-alt"></i>
             <span>SkillSwap</span>
           </div>
+          
+          
+          
           <div className="nav-actions">
             {user ? (
               <div className="user-menu">
