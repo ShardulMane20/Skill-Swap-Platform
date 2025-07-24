@@ -6,7 +6,7 @@ import { auth, provider, db } from '../firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { toast } from 'react-toastify';
 
-const GoogleLoginModal = ({ onClose }) => {
+const GoogleLoginModal = ({ onClose, onLoginSuccess }) => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -17,15 +17,19 @@ const GoogleLoginModal = ({ onClose }) => {
     if (userSnap.exists()) {
       const data = userSnap.data();
 
-     const isComplete =
-  data.name?.trim() &&
-  Array.isArray(data.skillsOffered) && data.skillsOffered.length > 0 &&
-  Array.isArray(data.skillsWanted) && data.skillsWanted.length > 0 &&
-  data.availability?.trim();
+      const isComplete =
+        data.name?.trim() &&
+        Array.isArray(data.skillsOffered) && data.skillsOffered.length > 0 &&
+        Array.isArray(data.skillsWanted) && data.skillsWanted.length > 0 &&
+        data.availability?.trim();
 
       toast.success('Login successful!');
-
-      navigate(isComplete ? '/home' : '/profile-setup');
+      
+      if (isComplete) {
+        onLoginSuccess();
+      } else {
+        navigate('/profile-setup');
+      }
     } else {
       const {
         displayName,
@@ -48,6 +52,10 @@ const GoogleLoginModal = ({ onClose }) => {
         provider: providerId,
         createdAt: metadata?.creationTime || new Date().toISOString(),
         lastLogin: metadata?.lastSignInTime || '',
+        isPublic: true,
+        skillsOffered: [],
+        skillsWanted: [],
+        availability: '',
       });
 
       toast.info('Please complete your profile');

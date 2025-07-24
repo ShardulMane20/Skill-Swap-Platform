@@ -11,17 +11,21 @@ import {
   limit,
   startAfter,
   getCountFromServer,
+  doc,
+  getDoc
 } from "firebase/firestore";
 import "./HomePage.css";
+import GoogleLoginModal from "./GoogleLoginModel";
 
 const HomePage = () => {
   const [user, setUser] = useState(null);
-  const [showLoginPopup, setShowLoginPopup] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const [profiles, setProfiles] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageDocs, setPageDocs] = useState([]);
   const [totalPages, setTotalPages] = useState(1);
   const [isNavigating, setIsNavigating] = useState(false);
+  const [targetProfileId, setTargetProfileId] = useState(null);
   const profilesPerPage = 3;
   const [availability, setAvailability] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -84,17 +88,37 @@ const HomePage = () => {
     }, 300);
 
     return () => clearTimeout(debounceFetch);
-  }, [currentPage, availability, searchQuery]);
+  }, [currentPage, availability, searchQuery, pageDocs]);
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
   };
 
-  const handleRequest = (profileId) => {
+  const handleRequest = async (profileId) => {
     if (!user) {
-      setShowLoginPopup(true);
+      setTargetProfileId(profileId);
+      setShowLoginModal(true);
     } else {
-      navigate(`/proposal/${profileId}`);
+      // Check if user has completed profile
+      const userRef = doc(db, "users", user.uid);
+      const userSnap = await getDoc(userRef);
+      
+      if (userSnap.exists()) {
+        const data = userSnap.data();
+        const isComplete = 
+          data.name?.trim() && 
+          Array.isArray(data.skillsOffered) && data.skillsOffered.length > 0 && 
+          Array.isArray(data.skillsWanted) && data.skillsWanted.length > 0 && 
+          data.availability?.trim();
+        
+        if (isComplete) {
+          navigate(`/proposal/${profileId}`);
+        } else {
+          navigate('/profile-setup');
+        }
+      } else {
+        navigate('/profile-setup');
+      }
     }
   };
 
@@ -103,13 +127,11 @@ const HomePage = () => {
     navigate('/request');
   };
 
-  const handleLoginPopupClose = () => {
-    setShowLoginPopup(false);
-  };
-
-  const handleLoginRedirect = () => {
-    setShowLoginPopup(false);
-    navigate('/profile-setup');
+  const handleLoginSuccess = () => {
+    if (targetProfileId) {
+      navigate(`/proposal/${targetProfileId}`);
+    }
+    setShowLoginModal(false);
   };
 
   const toggleMenu = () => {
@@ -138,7 +160,7 @@ const HomePage = () => {
                 </button>
               </div>
             ) : (
-              <button className="nav-btn primary" onClick={() => navigate('/profile-setup')}>
+              <button className="nav-btn primary" onClick={() => setShowLoginModal(true)}>
                 Sign In
               </button>
             )}
@@ -264,21 +286,11 @@ const HomePage = () => {
         </div>
       </main>
 
-      {showLoginPopup && (
-        <div className="login-popup">
-          <div className="popup-content">
-            <h2>Join the Community</h2>
-            <p>Sign in to connect with other members and start skill swapping!</p>
-            <div className="popup-buttons">
-              <button className="popup-login-btn" onClick={handleLoginRedirect}>
-                <i className="fas fa-sign-in-alt"></i> Sign In
-              </button>
-              <button className="popup-close-btn" onClick={handleLoginPopupClose}>
-                <i className="fas fa-times"></i> Close
-              </button>
-            </div>
-          </div>
-        </div>
+      {showLoginModal && (
+        <GoogleLoginModal 
+          onClose={() => setShowLoginModal(false)} 
+          onLoginSuccess={handleLoginSuccess}
+        />
       )}
     </div>
   );
